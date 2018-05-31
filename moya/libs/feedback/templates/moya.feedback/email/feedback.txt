@@ -1,0 +1,12 @@
+{% extends 'base.txt' %}
+
+{% block 'content' -%}
+Feedback sent from ${.request.path_url}
+
+Name: ${name}
+Email: ${email}
+Subject: ${subject}
+
+Message:
+${message}
+{% endblock %}

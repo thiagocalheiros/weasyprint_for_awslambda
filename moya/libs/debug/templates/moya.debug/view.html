@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block 'body' %}
+
+<h2>Debug View <small>placeholder for content</small></h2>
+
+<div class="alert alert-info">
+    If you are seeing this page it means your URL is correctly mapped. but you still need to implement the content.
+</div>
+<p>
+More debug information <a href="{% url 'intro' %}">here</a>.
+</p>
+
+<h3>Template Data</h3>
+<p>The following template variables may be used&hellip;</p>
+
+{% for k, v in sorted:items:$$ %}
+<h4>${k} <small>${debug:v}</small></h4>
+{% inspect v %}
+{% endfor %}
+
+{% endblock %}

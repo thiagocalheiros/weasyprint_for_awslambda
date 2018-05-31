@@ -1,0 +1,210 @@
+<moya xmlns="http://moyaproject.com"
+      xmlns:let="http://moyaproject.com/let"
+      xmlns:db="http://moyaproject.com/db"
+      xmlns:auth="http://moyaproject.com/auth">
+
+    <!-- Tags add new high-level functionality -->
+
+    <tag name="get-permissions" synopsis="query user permissions">
+    	<doc>Get list of permissions for a given user</doc>
+    	<signature>
+    		<attribute name="user">
+    			A User object
+    		</attribute>
+    	</signature>
+        <return value="{}" if="not user"/>
+        <db:query
+            columns="#PermissionMembership.permission_id"
+            filter="#PermissionMembership.group.id in user.groups or #PermissionMembership.group.user == user"
+            flat="yes"
+            dst="perm_memberships"/>
+        <db:query
+            model="#Permission"
+            filter="#Permission.id in perm_memberships"
+            dst="perms"
+            orderby="name"
+            collect="dict"
+            collectkey="name"/>
+
+       	<return value="perms" />
+    </tag>
+
+    <tag name="check-password" synopsis="check a user password">
+        <doc>Validate a user's password</doc>
+        <signature>
+            <attribute name="user"/>
+            <attribute name="password"/>
+        </signature>
+        <return>
+            <call macro="#checkpassword"
+                let:password="password"
+                let:stored_password="user.password"/>
+        </return>
+    </tag>
+
+    <tag name="login-user" synopsis="log in a user">
+        <doc>Login a give user without checking credentials</doc>
+        <signature>
+            <attribute name="user"/>
+        </signature>
+        <db:transaction>
+            <var dst="session_expire">${.app.settings.session_expire}</var>
+            <db:create model="#Session" dst="session" let:user="user" let:expire_date=".now + session_expire">
+                <call macro="#makesessionkey" dst="session_key" />
+            </db:create>
+            <let user.previous_login="user.last_login" user.last_login=".now"/>
+        </db:transaction>
+        <db:query model="#Session" let:user="user" filter="#Session.expire_date lt .now" action="delete" />
+        <set-cookie name="authsession" value="${session.session_key}" overwrite="yes" />
+        <fire signal="moya.auth.post-login" let:user="user"/>
+    </tag>
+
+    <tag name="login" synopsis="log in a user with username/password">
+        <doc>Check credentials and login a user</doc>
+        <signature>
+            <attribute name="username">
+                A username or email address
+            </attribute>
+            <attribute name="password"/>
+        </signature>
+
+        <db:get model="#User" let:email="username" dst="user" if="'@' in username"/>
+        <catch exception="db.multiple-results">
+            <throw exception="moya.auth.multiple-emails"
+                msg="multiple users with that email adddress" />
+        </catch>
+
+        <db:get model="#User" let:username="username" dst="user" if="not user"/>
+
+        <throw exception="moya.auth.no-user" msg="no user of that name"
+            if="not user" let:username="username"/>
+
+        <call macro="#checkpassword" dst="authorised"
+            let:password="password" let:stored_password="user.password"/>
+
+        <throw exception="moya.auth.password-fail" msg="user found, but password failed"
+            if="not authorised" let:user="user"/>
+        <throw exception="moya.auth.forbidden.not-active" msg="user is not active"
+            if="not user.active" let:user="user"/>
+        <throw exception="moya.auth.forbidden.not-validated" msg="validated email required"
+            if="not user.email_validated and .app.settings.require_validated_email.bool" />
+
+        <auth:login-user user="user"/>
+        <return value="user" />
+    </tag>
+
+    <tag name="logout" synopsis="log out a user">
+        <doc>Log out the currently logged in user, or a given user</doc>
+        <signature>
+            <attribute name="user" default="None"/>
+        </signature>
+        <if test="user">
+            <db:query model="#Session" let:user="user" action="delete" />
+        </if>
+        <else>
+            <db:query model="#Session" let:session_key=".request.cookies.authsession" action="delete"/>
+            <delete-cookie name="authsession" />
+        </else>
+        <fire signal="moya.auth.post-logout" let:user="user"/>
+    </tag>
+
+    <tag name="get-user" synopsis="get current user details">
+        <doc>Get currently logged in user (if any)</doc>
+        <if test=".request.cookies.authsession">
+            <db:get model="#Session" let:session_key=".request.cookies.authsession" dst="session"/>
+            <catch exception="db.*">
+                <return />
+            </catch>
+            <return value="session.user" if="session"/>
+        </if>
+    </tag>
+
+    <tag name="new-user" synopsis="create a new user">
+        <doc>Create a user</doc>
+        <signature>
+            <attribute name="username"/>
+            <attribute name="email"/>
+            <attribute name="password" required="no"/>
+            <attribute name="first_name" required="no" default=""/>
+            <attribute name="last_name" required="no" default=""/>
+            <attribute name="email_validated" required="no" default="no" />
+        </signature>
+        <call macro="#hashpassword" dst="password" let:password="password"/>
+
+        <db:atomic>
+            <db:get model="#User" let:username="username" dst="users" />
+            <throw
+                exception="moya.auth.duplicate-username"
+                msg="Can't create user, username exists"
+                if="users"/>
+
+            <db:create model="#User"
+                let:username="username"
+                let:email="email or None"
+                let:first_name="first_name"
+                let:last_name="last_name"
+                let:password="password or None"
+                let:email_validated="email_validated"
+                dst="newuser" />
+            <catch exception="db.integrity-error">
+                <throw exception="moya.auth.duplicate-username" msg="Can't create user - username exists"/>
+            </catch>
+            <db:create model="#Group" let:user="newuser" dst="group"/>
+            <append value="group" src="newuser.groups" />
+        </db:atomic>
+        <return value="newuser" />
+    </tag>
+
+    <tag name="set-password" synopsis="set a user's password">
+        <doc>This will set a users password</doc>
+        <signature>
+            <attribute name="user"/>
+            <attribute name="password"/>
+        </signature>
+        <call macro="#hashpassword" dst="password" let:password="password"/>
+        <let user.password="password" />
+        <db:commit />
+    </tag>
+
+    <tag name="new-permission" synopsis="create a new permission">
+        <doc>Create a new permission (if it doesn't already exist)</doc>
+        <signature>
+            <attribute name="name" type="text" required="yes"/>
+            <attribute name="description" type="text" required="no" />
+        </signature>
+        <db:get-or-create model="#Permission"
+            let:name="name"
+            initial="description=description"
+            dst="permission" />
+        <return value="permission"/>
+    </tag>
+
+    <tag name="add-permission" synopsis="add a permission to a group or user">
+        <doc>Add a permission to a group or user</doc>
+        <signature>
+            <attribute name="user" required="no">A user object</attribute>
+            <attribute name="group" required="no">A group name</attribute>
+            <attribute name="permission">Permission name</attribute>
+        </signature>
+        <db:atomic>
+            <if test="user">
+                <db:get-or-create model="#Group" let:user="user" dst="group" />
+            </if>
+            <else>
+                <db:get-or-create model="#Group" let:name="group" dst="group" />
+            </else>
+            <db:get model="#Permission" let:name="permission" dst="permission" />
+            <append src="group.permissions" value="permission" />
+        </db:atomic>
+    </tag>
+
+    <tag name="add-user-to-group" synopsis="add a user to a group">
+        <doc>Add a user to a group</doc>
+        <signature>
+            <attribute name="user" required="no">A user object</attribute>
+            <attribute name="group">The name of a group</attribute>
+        </signature>
+        <db:get-exist model="#Group" let:name="group" dst="group" />
+        <append src="user.groups" value="group" />
+    </tag>
+</moya>

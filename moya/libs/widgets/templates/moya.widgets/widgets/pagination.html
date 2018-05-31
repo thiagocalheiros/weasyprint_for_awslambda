@@ -1,0 +1,27 @@
+{% def "page_link" %}${urlencode:update:[self.query, page=page]}{% if self.fragment %}#${self.fragment}{% /if %}{% /def %}
+
+{%- with pagination %}
+{%- if numpages > 1 %}
+<ul class="pagination">
+    {%- if activepageno == 1 %}
+    <li class="disabled"><a title="Previous">&larr;</a></li>
+    {%- else %}
+    <li><a href="?{% call 'page_link' with page=activepageno-1 %}" title="Previous page">&larr;</a></li>
+    {%- /if %}
+    {%- for pageno in pagelinks %}
+    <li{% if pageno==activepageno %} class="active"{% endif %}{% if not pageno %} class="disabled"{% /if %}>
+        {%- if not pageno -%}
+        <a>&hellip;</a>
+        {%- else -%}
+        <a href="?{% call 'page_link' with page=pageno %}">${pageno}</a>
+        {%- endif -%}
+    </li>
+    {%- /for %}
+    {%- if activepageno == numpages %}
+    <li class="disabled" title="Next"><a>&rarr;</a></li>
+    {%- else %}
+    <li><a href="?{% call 'page_link' with page=activepageno+1 %}" title="Next page">&rarr;</a></li>
+    {%- /if %}
+</ul>
+{%- /if %}
+{%- /with %}

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<moya xmlns="http://moyaproject.com"
+      xmlns:let="http://moyaproject.com/let">
+    <!-- define your tags here -->
+
+    <data-tag name="module" synopsis="define a module in the admin interface">
+    	<doc>Define a top level admin module</doc>
+    	<signature>
+            <attribute name="slug" type="text">Identifier used in URLs</attribute>
+    		<attribute name="title" type="text">Title used in Modules panel</attribute>
+    		<attribute name="description" type="text">Description of the module</attribute>
+            <attribute name="content" type="elementref" required="no">Content to use as the main page</attribute>
+    	</signature>
+    </data-tag>
+
+    <data-tag name="link" synopsis="link to admin content">
+        <doc>A link to admin content (must go inside a module tag)</doc>
+        <signature>
+            <attribute name="to" type="reference" required="no"/>
+            <attribute name="title" required="no" type="text"/>
+            <attribute name="view" type="reference" required="no"/>
+            <attribute name="slug" type="reference" required="no"/>
+        </signature>
+    </data-tag>
+
+    <data-tag name="table" synopsis="define a table view in the admin interface">
+    	<doc>An admin table</doc>
+    	<signature>
+            <attribute name="template" required="no" type="template" default="widgets/table.html" />
+            <attribute name="filter" required="no" type="text"/>
+            <attribute name="model" required="yes" default="" type="text" />
+            <attribute name="slug" type="text" required="yes" />
+            <attribute name="order" type="text" required="no" />
+            <attribute name="title" type="text" required="no" />
+            <attribute name="description" type="text" required="no" />
+            <attribute name="search" required="no" type="dbexpression"/>
+    	</signature>
+    </data-tag>
+
+
+</moya>

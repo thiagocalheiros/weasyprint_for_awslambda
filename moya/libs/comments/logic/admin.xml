@@ -1,0 +1,65 @@
+<moya xmlns="http://moyaproject.com"
+        xmlns:moya="http://moyaproject.com"
+        xmlns:let="http://moyaproject.com/let"
+        xmlns:auth="http://moyaproject.com/auth"
+        xmlns:admin="http://moyaproject.com/admin"
+        xmlns:html="http://moyaproject.com/html"
+        xmlns:w="http://moyaproject.com/widgets">
+
+    <module xmlns="http://moyaproject.com/admin"
+        slug="moya-comments" title="Comments" description="Manage users and permissions">
+        <link to="#table.commentobjects" title="Comment Objects" />
+        <link to="#table.comments" title="Comments"/>
+        <link to="#table.object-subscriptions" title="Object Subscriptions"/>
+        <link to="#table.subscriptions" title="Subscriptions"/>
+    </module>
+
+    <table xmlns="http://moyaproject.com/admin"
+        search="#CommentObject.namespace == q or #CommentObject.object == q or #CommentObject.object_url icontains q"
+        libname="table.commentobjects" slug="commentobjects" title="Comment Objects" model="#CommentObject" description="Comment Objects">
+        <column title="ID" sort="id" link="yes">#${object.id}</column>
+        <column title="URL" sort="object_url">
+            <w:link target="_blank" url="${object.object_url}">${last:pathsplit:object.url}</w:link>
+        </column>
+        <column title="Namespace" sort="namespace">${object.namespace}</column>
+        <column title="Object" sort="object">${object.object}</column>
+    </table>
+
+    <table xmlns="http://moyaproject.com/admin" order="-time"
+        search="#Comment.commenter_ip == q or #Comment.commenter_name contains q"
+        libname="table.comments" slug="comments" title="Comments" model="#Comment" description="User Comments">
+        <column title="ID" sort="id" link="yes">#${object.id}</column>
+        <column title="Page" >
+            <html:a href="${object.commentobject.object_url}#comment${object.id}">${last:pathsplit:object.url}</html:a>
+        </column>
+        <column title="Commenter" sort="commenter_name">${object.user.username or object.commenter_name or ''}</column>
+        <column title="IP" sort="commenter_ip">${object.commenter_ip or ''}</column>
+        <column title="User" sort="#Comment.user.username"><moya:render src="object.user"/></column>
+        <column title="Posted" sort="time">${object.time % 'short'}</column>
+        <column title="Moderated?" sort="moderated">
+            <check ticked="object.moderated" />
+        </column>
+    </table>
+
+    <table xmlns="http://moyaproject.com/admin" order="-id"
+        model="#ObjectSubscription"
+        libname="table.object-subscriptions" slug="object-subscriptions" title="Object Subscriptions"
+        description="User's subcriptions">
+        <column title="ID" link="yes" sort="id">${object.id}</column>
+        <column title="User" sort="user.username"><moya:render src="object.user"/></column>
+        <column title="Comment Object" sort="commentobject.object">${object.commentobject}</column>
+    </table>
+
+    <table xmlns="http://moyaproject.com/admin" order="-id"
+        model="#Subscription"
+        libname="table.subscriptions" slug="subscriptions" title="Subscriptions"
+        description="Subcriptions">
+        <column title="UID" sort="uid" link="yes">${object.uid}</column>
+        <column title="URL" sort="url">
+            <w:link url="${object.url}">${last:pathsplit:object.url}</w:link>
+        </column>
+        <column title="Name" sort="name">${object.name}</column>
+        <column title="Email" sort="email">${object.email}</column>
+    </table>
+
+</moya>

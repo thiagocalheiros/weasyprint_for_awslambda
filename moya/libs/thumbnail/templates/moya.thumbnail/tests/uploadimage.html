@@ -1,0 +1,13 @@
+{% extends "/base.html" %}
+
+{% block "body" append %}
+
+{%- if filename %}
+
+{%- for thumb in ['small', 'square', 'width200', 'fitsquare', 'fit', 'blur'] %}
+<img src="${filename | "thumbnail"(processor=thumb)}">
+{%- endfor %}
+
+{%- endif %}
+
+{%- endblock %}

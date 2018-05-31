@@ -1,0 +1,17 @@
+<moya xmlns="http://moyaproject.com"
+      xmlns:let="http://moyaproject.com/let"
+      xmlns:db="http://moyaproject.com/db"
+      xmlns:html="http://moyaproject.com/html">
+
+    <macro libname="get_comment_object">
+        <db:get-or-create
+            model="#CommentObject"
+            dst="commentobject"
+            let:namespace="namespace"
+            let:object="object"
+            initial="markup=markup,object_url=object_url"/>
+        <let commentobject.object_url="object_url"/>
+        <return value="commentobject"/>
+    </macro>
+
+</moya>

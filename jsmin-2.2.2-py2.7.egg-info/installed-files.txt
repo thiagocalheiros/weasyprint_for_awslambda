@@ -1,0 +1,10 @@
+../jsmin/__init__.py
+../jsmin/__init__.pyc
+../jsmin/__main__.py
+../jsmin/__main__.pyc
+../jsmin/test.py
+../jsmin/test.pyc
+PKG-INFO
+SOURCES.txt
+dependency_links.txt
+top_level.txt

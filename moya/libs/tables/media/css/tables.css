@@ -1,0 +1,37 @@
+.moya-tables-sortable a
+{
+    text-decoration:normal;
+    color:inherit;
+}
+
+.moya-tables-sortable a:hover
+{
+    color:#428bca;
+    text-decoration:none;
+}
+
+.moya-tables-sortable.sort-active.sort-asc a::after
+{
+    content: '\00a0↑';
+}
+
+.moya-tables-sortable.sort-active.sort-desc a::after
+{
+    content: '\00a0↓';
+}
+
+
+.moya-tables-align-left
+{
+    text-align:left;
+}
+
+.moya-tables-align-right
+{
+    text-align:right;
+}
+
+.moya-tables-align-center
+{
+    text-align:center;
+}

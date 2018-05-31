@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<moya xmlns="http://moyaproject.com"
+    xmlns:moya="http://moyaproject.com"
+    xmlns:let="http://moyaproject.com/let"
+    xmlns:db="http://moyaproject.com/db"
+    xmlns:forms="http://moyaproject.com/forms"
+    xmlns:w="http://moyaproject.com/widgets"
+    xmlns:html="http://moyaproject.com/html"
+    xmlns:email="http://moyaproject.com/email">
+
+    <email libname="email.exception" xmlns="http://moyaproject.com/email"
+        from="${.app.settings.email_from}">
+        <html template="email/exception.html" />
+    </email>
+
+    <handle signal="sys.unhandled-exception">
+        <if test="not strip:.app.settings.admin_email">
+            <log-warn>'admin_email' setting not given, unable to send error email</log-warn>
+            <done/>
+        </if>
+        <log-info>sending unhandled exception email to ${commalist:.app.settings.admin_email.list}</log-info>
+
+        <email:send
+            email="#email.exception"
+            subject="${sub:.app.settings.subject} ${signal.data.trace.msg}"
+            to="${commalist:.app.settings.admin_email.list}"
+            data="signal.data"/>
+
+    </handle>
+
+</moya>

@@ -1,0 +1,5 @@
+{%- if .app.settings.use_fontawesome.bool and .libs['moya.fontawesome'] %}
+{% include "widgets/editor-fa.html" %}
+{%- else %}
+{% include "widgets/editor-basic.html" %}
+{%- endif %}

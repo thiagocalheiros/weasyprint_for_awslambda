@@ -1,0 +1,23 @@
+<moya xmlns="http://moyaproject.com"
+    xmlns:let="http://moyaproject.com/let"
+    xmlns:db="http://moyaproject.com/db">
+
+    <tag name="get-recent">
+        <signature>
+            <attribute name="count" default="10" type="integer"/>
+        </signature>
+        <db:query model="#Post" dst="posts" orderby="-published_date" let:published="yes" maxresults="count"/>
+        <return value="posts" />
+    </tag>
+
+    <tag name="get-new-count">
+        <doc>Get new posts since the user has logged in</doc>
+        <return value="0" if="not .user or not.user.last_login"/>
+        <db:query model="#Post" dst="posts"
+            let:published="yes"
+            filter="#Post.published_date gt .user.last_login"/>
+        <return value="posts.count"/>
+    </tag>
+
+
+</moya>

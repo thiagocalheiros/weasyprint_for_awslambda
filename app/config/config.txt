@@ -1,0 +1,7 @@
+[aws]
+bucket = bucket
+apikey = apikey
+secret = secret
+link   = https://s3.amazonaws.com/{}/{}
+[so]
+dir    = /tmp/

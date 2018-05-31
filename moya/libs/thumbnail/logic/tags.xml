@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<moya xmlns="http://moyaproject.com"
+    xmlns:let="http://moyaproject.com/let"
+    xmlns:image="http://moyaproject.com/image"
+    xmlns:tn="http://moyaproject.com/thumbnail">
+
+    <data-tag name="thumbnails" synopsis="a container for thumbnail processors">
+        <doc>
+            Define a collection of thumbnail processors.
+
+            This tag should contain one or more [tag thumbnail]processor[/tag] tags.
+        </doc>
+        <signature>
+            <attribute name="name" type="text">Name to be used in paths</attribute>
+        </signature>
+
+    </data-tag>
+
+    <data-tag name="processor" synopsis="define a thumbnail processor">
+        <doc><![CDATA[
+
+A thumbnail processor.
+
+Defines how an image should be processed to produce another image. When [tag thumbnail]generate[/tag] runs,
+it calls the each processor in a [tag thumbnail]thumbnails[/tag] with an image object called [c]image[/c].
+The code inside the processor transforms that image. The new image is then written as the thumbnail. Here's an example:
+
+[code xml]
+<tn:thumbnails libname="sushifinder#thumbnails.products">
+    <tn:processor name="small">
+        <image:resize-to-fit width="80" height="80" />
+    </tn:processor>
+</tn:thumbnails>
+[/code]
+
+            ]]></doc>
+        <signature>
+            <attribute name="name" required="yes" type="text">
+                An identifier used in the thumbnail generation
+            </attribute>
+            <attribute name="version" type="integer" required="no" default="1">
+                A version number of the processor
+            </attribute>
+            <attribute name="format" default="jpeg" choices="jpeg,png" type="text">
+                Image format for the thumbnail
+            </attribute>
+            <attribute name="quality" default="80" type="integer" required="no" >
+                The quality of jpeg thumbnails (max 100)
+            </attribute>
+        </signature>
+    </data-tag>
+
+    <macro libname="get_thumb_path">
+        <doc>Get the path to a thumbnail</doc>
+        <signature>
+            <argument name="path" required="yes"/>
+            <argument name="app" check="isstr:app">Application name</argument>
+            <argument name="processor" required="yes">Processor element</argument>
+        </signature>
+
+        <let
+            thumbnails_name="processor.parent.params.name"
+            thumbnail_directory=".app.settings.thumb_dir"
+            thumb_dir="path:dirname:path / thumbnail_directory / app / basename:path" />
+        <str dst="thumb_filename">${slug:basename:path}.${processor.params.name}.${processor.params.version}.${processor.params.format}</str>
+        <let thumb_path="path:thumb_dir / thumb_filename" />
+
+        <return value="thumb_path"/>
+    </macro>
+
+
+    <filter name="thumbnail_url">
+        <doc>
+            Gets the URL to a given thumbnail. Accepts 'processor' name and optional 'app'.
+        </doc>
+
+        <let app_name="app or _caller_app.name"/>
+        <find-element
+            tag="processor"
+            ns="http://moyaproject.com/thumbnail"
+            from="${app_name}"
+            dst="processor"
+            let:name="processor"/>
+
+        <call macro="#get_thumb_path"
+            let:processor="processor"
+            let:path="value"
+            let:app="app_name"
+            dst="thumb_path"/>
+
+        <return>
+            <get-url name="serve" from="${.app.settings.app_serve}" let:path="thumb_path"/>
+        </return>
+    </filter>
+
+
+    <filter name="thumbnail">
+        <doc>Generate (if required) a thumbnail from a path and return the URL. Accepts 'processor' name and optional 'app'.</doc>
+
+        <tn:render-processor
+            processor="processor"
+            path="value"
+            app="app or _caller_app.name"
+            dst="url"/>
+        <catch exception="*" dst="e">
+            <log-error>${e}</log-error>
+            <return value="None"/>
+        </catch>
+
+        <return value="url"/>
+    </filter>
+
+    <tag name="generate" synopsis="generate thumbnails">
+        <doc>
+            Generate thumbnails for an image. See [tag thumbnail]thumbnails[/tag] and [tag thumbnail]processor[/tag].
+        </doc>
+        <signature>
+            <attribute name="thumbnails" type="element">A reference to the thumbnail tag</attribute>
+            <attribute name="path">Path to the image to the original image</attribute>
+            <attribute name="overwrite" required="no" default="yes" type="boolean">Should existing thumbnails be overwritten?</attribute>
+            <attribute name="image" required="no">Image object if already read in to memory (will be read from the fs if not supplied)</attribute>
+        </signature>
+
+        <let settings=".app.settings"
+            fsname="settings.fs"
+            fs=".fs[fsname]"/>
+
+        <image:read fsobj="fs" path="${path}" dst="image" if="not image"/>
+
+        <!-- loop through all the processors -->
+        <for-children element="thumbnails" tag="processor" dst="processor">
+            <tn:render-processor
+                processor="processor"
+                app="processor.app.name"
+                path="path"
+                image="image"
+                overwrite="overwrite"/>
+        </for-children>
+        <wait-on-threads/>
+    </tag>
+
+    <tag name="render-processor" synopsis="render a thumbnail for a given processor">
+        <signature>
+            <attribute name="processor">Processor element or name of processor</attribute>
+            <attribute name="app" required="yes">Application name</attribute>
+            <attribute name="path" required="yes">Path of image</attribute>
+            <attribute name="overwrite" required="no" type="boolean" default="no">Overwrite thumbnail if it exists?</attribute>
+            <attribute name="image" required="no">Optional original image (will be loaded automatically if not supplied)</attribute>
+        </signature>
+        <let settings=".app.settings"
+            fsname="settings.fs"
+            fs=".fs[fsname]"
+            thumb_fs=".fs[settings.thumb_fs or fsname]"
+            thumbnail_directory="settings.thumb_dir"
+            original_image="image"/>
+
+        <if test="isstr:processor">
+            <let processor_name="processor"/>
+            <find-element
+                tag="processor"
+                ns="http://moyaproject.com/thumbnail"
+                from="${app or .app.name}"
+                dst="processor"
+                let:name="processor_name"/>
+            <throw exception="moya.thumbnail.no-processor"
+                msg="processor '${processor_name}' not found in app ${debug:(app or .app.name)}"
+                if="not processor"/>
+        </if>
+
+        <call macro="#get_thumb_path"
+            let:processor="processor"
+            let:path="path"
+            let:app="app"
+            dst="thumb_path"/>
+
+        <let serve_urls=".app.settings.serve_url.list" serve_url="''"/>
+        <let serve_url="serve_urls[.counter % len:serve_urls]" if="serve_urls" />
+
+        <if test="settings.app_serve">
+            <get-url base="${serve_url}" name="serve" from="${settings.app_serve}" let:path="thumb_path" dst="url"/>
+        </if>
+        <else>
+            <let url="slashjoin:[settings.serve_url, thumb_path]"/>
+        </else>
+        <if test="overwrite or thumb_path not in thumb_fs">
+
+            <thread join="yes" scope="yes">
+                <if test="not original_image">
+                    <image:read fsobj="fs" path="${path}" dst="image"/>
+                </if>
+                <else>
+                    <image:copy image="original_image" />
+                </else>
+
+                <!-- call the processor to modify the image in place -->
+                <call macro="${processor.element_ref}" let:image="image" />
+
+                <!-- write the thumbnail -->
+                <image:write fsobj="thumb_fs"
+                    dirpath="${dirname:thumb_path}"
+                    filename="${basename:thumb_path}"
+                    let:quality="processor.params.quality"/>
+            </thread>
+            <!-- If threads are 'disabled', wait for the thread to continue -->
+            <wait-on-threads if="not .app.settings.threads.bool" />
+
+        </if>
+        <return value="url"/>
+    </tag>
+
+</moya>

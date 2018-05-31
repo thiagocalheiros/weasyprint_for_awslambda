@@ -1,0 +1,36 @@
+<moya xmlns="http://moyaproject.com"
+    xmlns:let="http://moyaproject.com/let"
+    xmlns:links="http://moyaproject.com/links"
+    xmlns:html="http://moyaproject.com/html">
+
+    <content libname="content.base">
+        <links:get dst="navlinks" />
+    </content>
+
+    <content libname="content.tests.base" final="yes" template="/tests.html">
+    	<title>[TESTS]</title>
+    </content>
+
+    <content libname="content.tests.merge" extends="#content.tests.base">
+        <section name="main"><text>[A]</text></section>
+    </content>
+
+    <content libname="content.tests.merge.replace" extends="#content.tests.merge">
+        <section name="main" merge="replace"><text>[B]</text></section>
+    </content>
+
+    <content libname="content.tests.merge.append" extends="#content.tests.merge">
+        <section name="main" merge="append"><text>[B]</text></section>
+    </content>
+
+    <content libname="content.tests.merge.prepend" extends="#content.tests.merge">
+        <section name="main" merge="prepend"><text>[B]</text></section>
+    </content>
+
+    <content libname="content.tests.node" extends="#content.tests.base">
+        <section name="main">
+            <node template="/node.html" let:var="var"/>
+        </section>
+    </content>
+</moya>
+

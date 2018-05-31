@@ -1,4 +1,0 @@
-[aws-config]
-bucket = ''
-apikey = ''
-secret = ''

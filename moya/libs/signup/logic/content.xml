@@ -1,0 +1,99 @@
+<moya xmlns="http://moyaproject.com"
+    xmlns:w="http://moyaproject.com/widgets"
+    xmlns:html="http://moyaproject.com/html">
+
+    <content libname="content.base" template="/base.html" />
+
+
+    <macro docname="login_button">
+        <if test=".session.pendingcomment and 'moya.comments' in .libs">
+            <w:button-link name="login" app="moya.auth" query="(fwd=.urls[appname:'moya.comments'].pendingcomment)">Sign In</w:button-link>
+            <markdown>
+                *Your pending comment will be posted when you sign in*
+            </markdown>
+        </if>
+        <else>
+            <w:button-link name="login" app="moya.auth">Sign In</w:button-link>
+        </else>
+    </macro>
+
+    <content libname="content.signup" extends="#content.base">
+        <title>Signup!</title>
+        <section name="body">
+            <w:info if="fail">Unable to create account, please try again later.</w:info>
+            <if test="success">
+                <if test="validate_email">
+                    <w:info>
+                        <markdown>
+We have sent an email to **${validate_email.user.email}** with a link. Please click this link to validate your email.
+
+If you don't receive this email within a few minutes, please check your spam folder.
+                        </markdown>
+                    </w:info>
+                </if>
+                <else>
+                    <w:success>Your new account was created!</w:success>
+                    <defer to="login_button"/>
+                </else>
+                <done />
+            </if>
+            <render src="form"/>
+        </section>
+    </content>
+
+    <content libname="content.validate" extends="#content.base">
+        <title>Validate Email</title>
+        <section name="body">
+            <get-url name="login" from="moya.auth" dst="login_url" />
+
+            <if test="success">
+                <w:success>
+                    <markdown>
+    **Thank you!**
+
+    Your email was validated successfully.
+                    </markdown>
+                </w:success>
+                <defer to="login_button"/>
+            </if>
+            <else>
+                <w:error>
+                    <markdown>
+    **Unable to validate your email address.**
+
+    You may have already used this link.
+                    </markdown>
+                </w:error>
+                <defer to="login_button"/>
+            </else>
+        </section>
+    </content>
+
+    <content libname="content.send_validate_email" extends="#content.base">
+        <title>Send Validate Email</title>
+        <section name="body">
+            <if test="success">
+                <w:success if="success">
+                    <markdown>
+                        **Email sent**
+
+                        Thank you! Please click the link in the email we just sent you.
+                    </markdown>
+                </w:success>
+            </if>
+            <else>
+                <w:well>
+                    <markdown>
+                        Use this form to validate your email address.
+
+                        You will receive an email from us containing a link. Please click that link to validate your email address.
+                    </markdown>
+                </w:well>
+
+                <render src="form"/>
+            </else>
+        </section>
+    </content>
+
+
+</moya>
